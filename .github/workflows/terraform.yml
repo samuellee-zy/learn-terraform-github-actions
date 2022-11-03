@@ -85,7 +85,7 @@ jobs:
       - uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.TOKEN }}
-          approvers: samuellee-zy
+          approvers: samuellee-zy-95
           minimum-approvals: 1
           issue-title: "Deploying Terraform Apply workflow"
       # Applies configurations. Only will run when a commit has been pushed to main
