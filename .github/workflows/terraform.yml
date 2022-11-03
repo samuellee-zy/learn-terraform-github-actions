@@ -9,8 +9,8 @@ on:
 
 # Configuration will define terraform job with 8 steps
 jobs:
-  terraform:
-    name: "Terraform"
+  terraform_plan:
+    name: "Terraform Plan"
     runs-on: ubuntu-latest
     steps:
       # Checkouts the current configuration
@@ -45,12 +45,7 @@ jobs:
         if: github.event_name == 'pull_request' # Only runs on pull requests. When PR is merged, plan is applied
         run: terraform plan -input=false
         continue-on-error: true # Continues even when errors; next step displays error message
-      - uses: trstringer/manual-approval@v1
-        with:
-          secret: ${{ github.TOKEN }}
-          approvers: samuellee-zy-95
-          minimum-approvals: 1
-          issue-title: "Approved Terraform Plan"
+
       # Adds comment to PR with results of the format, init and plan steps.
       - name: Update Pull Request
         uses: actions/github-script@v6
@@ -86,6 +81,28 @@ jobs:
       - name: Terraform Plan Status
         if: steps.plan.outcome == 'failure'
         run: exit 1
+
+      - uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: samuellee-zy-95
+          minimum-approvals: 1
+          issue-title: "Approved Terraform Plan"
+
+  terraform_deploy:
+    name: "Terraform Deploy"
+    runs-on: ubuntu-latest
+    steps:
+      # Checkouts the current configuration
+      - name: Checkout
+        uses: actions/checkout@v3 # Using Github's actions/checkout@v3 action
+
+      # Retrieves Terraform CLI used in GitHub action workflow
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          # terraform_version: 0.13.0:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }} # Loads TF_API_TOKEN as environment variable
 
       # Applies configurations. Only will run when a commit has been pushed to main
       - name: Terraform Apply
