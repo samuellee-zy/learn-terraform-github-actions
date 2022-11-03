@@ -1,47 +1,57 @@
 name: "Terraform"
 
+# Workflow only runs when commit is pushed to main or on any PR
 on:
   push:
     branches:
       - main
   pull_request:
 
+# Configuration will define terraform job with 8 steps
 jobs:
   terraform:
     name: "Terraform"
     runs-on: ubuntu-latest
     steps:
+      # Checkouts the current configuration
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3 # Using Github's actions/checkout@v3 action
 
+      # Retrieves Terraform CLI used in GitHub action workflow
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
+        uses: hashicorp/setup-terraform@v2
         with:
           # terraform_version: 0.13.0:
-          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }} # Loads TF_API_TOKEN as environment variable
 
+      # Checks for configuration's formatting
       - name: Terraform Format
         id: fmt
-        run: terraform fmt -check
+        run: terraform fmt -check # Runs terraform fmt check
 
+      # Initialises configuration to be used in GitHub action workflow
       - name: Terraform Init
         id: init
-        run: terraform init
-      
+        run: terraform init # Runs terraform init
+
+      # Validates configurated used in GitHub action workflow
       - name: Terraform Validate
         id: validate
-        run: terraform validate -no-color
+        run: terraform validate # Validate run checks that verify cofiguration is syntactically valid and internally consisted
 
+      # Generates a Terraform plan, triggering remote plan run in TF Cloud
       - name: Terraform Plan
         id: plan
-        if: github.event_name == 'pull_request'
-        run: terraform plan -no-color -input=false
-        continue-on-error: true
+        if: github.event_name == 'pull_request' # Only runs on pull requests. When PR is merged, plan is applied
+        run: terraform plan -input=false
+        continue-on-error: true # Continues even when errors; next step displays error message
 
-      - uses: actions/github-script@v6
-        if: github.event_name == 'pull_request'
+      # Adds comment to PR with results of the format, init and plan steps.
+      - name: Update Pull Request
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request' # Only runs on pull requests.
         env:
-          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}" # steps.plan.outputs.stdout == displays plan output
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -67,10 +77,18 @@ jobs:
               body: output
             })
 
+      # Returns if plan was successfully generated or not. If plan fails, it will continue to an error
       - name: Terraform Plan Status
         if: steps.plan.outcome == 'failure'
         run: exit 1
 
+      - uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: samuellee-zy
+          minimum-approvals: 1
+          issue-title: "Deploying Terraform Apply workflow"
+      # Applies configurations. Only will run when a commit has been pushed to main
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve -input=false
