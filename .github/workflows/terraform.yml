@@ -106,6 +106,10 @@ jobs:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }} # Loads TF_API_TOKEN as environment variable
 
       # Applies configurations. Only will run when a commit has been pushed to main
+      - name: Terraform Init
+        id: init
+        run: terraform init # Runs terraform init
+      
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve -input=false
